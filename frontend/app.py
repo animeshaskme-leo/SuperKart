@@ -72,3 +72,23 @@ if submit_button:
         st.error("Connection Error: Could not reach the Flask backend. Ensure both containers are running on the same Docker network.")
     except Exception as e:
         st.error(f"An unexpected error occurred: {str(e)}")
+
+      
+      st.subheader("Batch Prediction")
+      uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
+
+      if uploaded_file is not None:
+        data = pd.read_csv(uploaded_file)
+        st.write("Uploaded Data Preview")
+        st.write(data.head())
+
+        if st.button("Run Batch Predictions"):
+          with st.spinner("Processing batch"):
+            response = request.post("http://backend:7860/v1/predictbatch",json=data.to_dict(orient="records"))
+
+            if response.status_code == 200:
+              st.success("Batch Predictions Successful")
+              predictions = response.json()
+              st.write(pd.DataFrame(predictions))
+              else:
+                st.error("Failed to get predictions from backend")

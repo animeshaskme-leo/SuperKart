@@ -18,7 +18,7 @@ st.markdown("Provide the product and store details below to predict expected sal
 
 # Define the API endpoint URL
 # Note: When running inside Docker Compose or a Docker network, 'backend' resolves to the backend container.
-API_URL = "http://backend:7860/predict"
+API_URL = "http://127.0.0.1:7860/predict"
 
 # Create a form layout for user inputs matching the SuperKart dataset features
 with st.form("prediction_form"):

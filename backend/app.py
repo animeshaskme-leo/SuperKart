@@ -1,89 +1,69 @@
-# FLASK BACKEND APPLICATION FOR SUPERKART SALES PREDICTION
-
-
-# Import Flask web framework modules for handling requests and JSON responses
 from flask import Flask, request, jsonify
-# Import joblib to load the serialized machine learning model pipeline
 import joblib
-# Import pandas to process incoming JSON payloads into a DataFrame format
 import pandas as pd
-# Import os to check for model file existence
 import os
 
-# Initialize the Flask application instance with the clean name 'app'
 app = Flask(__name__)
 
-# Define the file path for the serialized SuperKart model inside backend_files
+# The model is expected to be in the same directory as app.py inside the container
 model_path = "superkart_model.joblib"
+model = None
 
-# Load the trained model pipeline into memory when the server starts
-if os.path.exists(model_path):
-    model = joblib.load(model_path)
-    print("SuperKart model loaded successfully into Flask backend.")
-else:
-    model = None
-    print("Warning: Model file not found at the specified path!")
+def load_model():
+    global model
+    if os.path.exists(model_path):
+        try:
+            model = joblib.load(model_path)
+            print("SuperKart model loaded successfully.")
+        except Exception as e:
+            print(f"Error loading model: {e}")
+    else:
+        print(f"Warning: Model file not found at {os.path.abspath(model_path)}")
 
-# Define root health-check endpoint
+# Initial load attempt
+load_model()
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
         "status": "online",
-        "message": "SuperKart Sales Prediction Backend API is running successfully!"
+        "model_loaded": model is not None,
+        "message": "SuperKart Sales Prediction Backend API is running!"
     })
 
-# Define prediction endpoint
 @app.route("/predict", methods=["POST"])
 def predict():
+    global model
+    if model is None:
+        load_model() # Try reloading if it was missing initially
+    
+    if model is None:
+        return jsonify({"success": False, "error": "Model file is missing on server."}), 500
+
     try:
-        # Extract JSON data from the incoming HTTP request
         json_data = request.get_json(force=True)
-
-        # Convert JSON object or list of objects into a pandas DataFrame
         input_df = pd.DataFrame([json_data] if isinstance(json_data, dict) else json_data)
-
-        # Generate sales predictions using the loaded pipeline (preprocessing + model)
         predictions = model.predict(input_df)
-
-        # Return predictions as a formatted JSON response
-        return jsonify({
-            "success": True,
-            "predictions": predictions.tolist()
-        })
-
+        return jsonify({"success": True, "predictions": predictions.tolist()})
     except Exception as e:
-        # Return error message if prediction fails
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 400
+        return jsonify({"success": False, "error": str(e)}), 400
 
-# Define batch prediction endpoint
 @app.route("/v1/predictbatch", methods=["POST"])
 def predict_batch():
+    global model
+    if model is None:
+        load_model()
+    
+    if model is None:
+        return jsonify({"success": False, "error": "Model file is missing on server."}), 500
+
     try:
-        # Extract JSON data from the incoming HTTP request
         json_data = request.get_json(force=True)
-
-        # Assuming json_data is a list of dictionaries for batch prediction
         input_df = pd.DataFrame(json_data)
-
-        # Generate sales predictions using the loaded pipeline
         predictions = model.predict(input_df)
-
-        # Return predictions as a formatted JSON response
-        return jsonify({
-            "success": True,
-            "predictions": predictions.tolist()
-        })
-
+        return jsonify({"success": True, "predictions": predictions.tolist()})
     except Exception as e:
-        # Return error message if prediction fails
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 400
+        return jsonify({"success": False, "error": str(e)}), 400
 
-# Run the Flask app locally if executed directly
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=7860, debug=True)

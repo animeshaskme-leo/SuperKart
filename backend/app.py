@@ -58,6 +58,32 @@ def predict():
             "error": str(e)
         }), 400
 
+# Define batch prediction endpoint
+@app.route("/v1/predictbatch", methods=["POST"])
+def predict_batch():
+    try:
+        # Extract JSON data from the incoming HTTP request
+        json_data = request.get_json(force=True)
+
+        # Assuming json_data is a list of dictionaries for batch prediction
+        input_df = pd.DataFrame(json_data)
+
+        # Generate sales predictions using the loaded pipeline
+        predictions = model.predict(input_df)
+
+        # Return predictions as a formatted JSON response
+        return jsonify({
+            "success": True,
+            "predictions": predictions.tolist()
+        })
+
+    except Exception as e:
+        # Return error message if prediction fails
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+
 # Run the Flask app locally if executed directly
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=7860, debug=True)
